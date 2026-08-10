@@ -20,6 +20,8 @@ Open the URL displayed in the terminal, normally <http://localhost:8501>.
 
 > All beam sizes in this application are **1/e² intensity radii**, not diameters.
 
+Shared parameters flow forward through the tabs: tab 1 passes only the wavelength to tabs 2 and 3, while tab 2 passes wavelength, waist radius, $M^2$, and focal length to tab 3. Fitted results from tab 1 remain local to tab 1. Length values are converted automatically when the selected unit differs.
+
 ## 1. Fit measured beam
 
 Use this tab to determine the beam-waist radius, waist position, and beam-quality factor from measured beam radii.

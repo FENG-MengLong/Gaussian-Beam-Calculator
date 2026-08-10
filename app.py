@@ -77,6 +77,47 @@ def metric(label, value, unit="", error=None):
     st.markdown(f"**{label}**  \n{display} {unit}".strip())
 
 
+def sync_value_forward(source_key, *target_keys):
+    """Copy an edited value into widgets in the following tabs."""
+    for target_key in target_keys:
+        st.session_state[target_key] = st.session_state[source_key]
+
+
+def sync_lens_length_to_scan(source_key, target_key):
+    value_mm = (
+        st.session_state[source_key]
+        * LENGTH_TO_MM[st.session_state["lens_length_unit"]]
+    )
+    st.session_state[target_key] = value_mm
+
+
+def convert_lens_input_units():
+    """Preserve physical values when the tab-2 display unit changes."""
+    old_unit = st.session_state.get("_previous_lens_length_unit", "mm")
+    new_unit = st.session_state["lens_length_unit"]
+    conversion = LENGTH_TO_MM[old_unit] / LENGTH_TO_MM[new_unit]
+    for key in (
+        "lens_w0_input",
+        "lens_s_input",
+        "lens_f_input",
+        "lens_plot_min",
+        "lens_plot_max",
+    ):
+        if key in st.session_state:
+            st.session_state[key] *= conversion
+    st.session_state["_previous_lens_length_unit"] = new_unit
+
+    if "lens_w0_input" in st.session_state:
+        sync_lens_length_to_scan("lens_w0_input", "scan_w0")
+    if "lens_f_input" in st.session_state:
+        sync_lens_length_to_scan("lens_f_input", "scan_f")
+
+
+st.session_state.setdefault(
+    "_previous_lens_length_unit",
+    st.session_state.get("lens_length_unit", "mm"),
+)
+
 st.title("Gaussian Beam Calculator")
 st.caption("Beam radii are 1/e² intensity radii. Wavelength inputs are in nm.")
 
@@ -88,7 +129,14 @@ with fit_tab:
     st.subheader("Fit $w_0$, $z_0$, and $M^2$ from measurements")
     left, right = st.columns([1, 2])
     with left:
-        fit_wavelength_nm = st.number_input("Wavelength [nm]", min_value=1.0, value=780.0, key="fit_lambda")
+        fit_wavelength_nm = st.number_input(
+            "Wavelength [nm]",
+            min_value=1.0,
+            value=780.0,
+            key="fit_lambda",
+            on_change=sync_value_forward,
+            args=("fit_lambda", "lens_lambda", "scan_lambda"),
+        )
         z_unit = st.selectbox("Distance column unit", ["m", "mm", "in"], index=1)
         w_unit = st.selectbox("Radius column unit", ["m", "mm", "µm"], index=1)
         uploaded = st.file_uploader(
@@ -171,26 +219,49 @@ with transform_tab:
         list(LENGTH_TO_MM),
         index=1,
         key="lens_length_unit",
+        on_change=convert_lens_input_units,
         help="Applies to beam sizes, distances, focal length, results, and the plot. Wavelength remains in nm.",
     )
     length_to_mm = LENGTH_TO_MM[length_unit]
-    wavelength_nm = c1.number_input("Wavelength [nm]", min_value=1.0, value=780.0, key="lens_lambda")
+    wavelength_nm = c1.number_input(
+        "Wavelength [nm]",
+        min_value=1.0,
+        value=780.0,
+        key="lens_lambda",
+        on_change=sync_value_forward,
+        args=("lens_lambda", "scan_lambda"),
+    )
     w0_input = c2.number_input(
         f"Input waist radius [{length_unit}]",
         min_value=1e-6 / length_to_mm,
         value=0.5 / length_to_mm,
         step=0.1 / length_to_mm,
+        key="lens_w0_input",
+        on_change=sync_lens_length_to_scan,
+        args=("lens_w0_input", "scan_w0"),
     )
-    m2_lens = c3.number_input("M²", min_value=1.0, value=1.0, step=0.1)
+    m2_lens = c3.number_input(
+        "M²",
+        min_value=1.0,
+        value=1.0,
+        step=0.1,
+        key="lens_m2",
+        on_change=sync_value_forward,
+        args=("lens_m2", "scan_m2"),
+    )
     s_input = c4.number_input(
         f"Waist → lens distance [{length_unit}]",
         value=150.0 / length_to_mm,
         step=1.0 / length_to_mm,
+        key="lens_s_input",
     )
     f_input = c5.number_input(
         f"Focal length [{length_unit}]",
         value=100.0 / length_to_mm,
         step=1.0 / length_to_mm,
+        key="lens_f_input",
+        on_change=sync_lens_length_to_scan,
+        args=("lens_f_input", "scan_f"),
     )
 
     region_min_col, region_max_col = st.columns(2)
@@ -199,12 +270,14 @@ with transform_tab:
         value=-500.0 / length_to_mm,
         step=10.0 / length_to_mm,
         help="Absolute propagation position; the input waist is at z = 0.",
+        key="lens_plot_min",
     )
     plot_max_input = region_max_col.number_input(
         f"Plot region maximum [{length_unit}]",
         value=650.0 / length_to_mm,
         step=10.0 / length_to_mm,
         help="Absolute propagation position; the lens is at z = s.",
+        key="lens_plot_max",
     )
 
     w0_mm = w0_input * length_to_mm
