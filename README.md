@@ -1,25 +1,49 @@
 # Gaussian Beam Calculator
 
-A Streamlit web application with three tools:
+A Streamlit application for fitting Gaussian-beam measurements and calculating beam propagation through a thin lens.
 
-1. Fit measured beam radii to obtain waist radius, waist position, M², Rayleigh range, and divergence.
-2. Calculate and plot propagation through a thin lens.
-3. Scan lens position and export the calculated results.
+## Start the application
 
-## Run locally
+Install the required packages:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate       # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-streamlit run app.py
+python3 -m pip install -r requirements.txt
 ```
 
-Open the local URL printed by Streamlit, normally <http://localhost:8501>.
+Run the application from the project directory:
 
-## Fit data format
+```bash
+python3 -m streamlit run app.py
+```
 
-Upload a CSV containing `z` and `w` columns. Select their units in the interface. `w` is the **beam radius**, not diameter, and is the 1/e² intensity radius.
+Open the URL displayed in the terminal, normally <http://localhost:8501>.
+
+> All beam sizes in this application are **1/e² intensity radii**, not diameters.
+
+## 1. Fit measured beam
+
+Use this tab to determine the beam-waist radius, waist position, and beam-quality factor from measured beam radii.
+
+1. Enter the laser wavelength in nanometres.
+2. Select the units used by the distance (`z`) and radius (`w`) columns.
+3. Upload a CSV file or edit the example data directly in the table.
+4. Click **Fit beam**.
+
+The application reports:
+
+- Waist radius, $w_0$
+- Waist position, $z_0$
+- Beam-quality factor, $M^2$
+- Rayleigh range, $z_R$
+- Far-field divergence half-angle
+- Coefficient of determination, $R^2$
+- One-standard-deviation ($1\sigma$) uncertainties for the fitted parameters
+
+The fitted curve and measured points are plotted together. Use **Download fit result** to save the calculated values as a CSV file.
+
+### Measurement CSV format
+
+The CSV file must contain columns named `z` and `w`:
 
 ```csv
 z,w
@@ -30,10 +54,54 @@ z,w
 200,0.640
 ```
 
-## Deployment
+For a reliable fit:
 
-Push `app.py` and `requirements.txt` to GitHub and create an app at [Streamlit Community Cloud](https://share.streamlit.io/). Set the entry point to `app.py`.
+- Use radius rather than diameter.
+- Include measurements on both sides of the waist when possible.
+- Measure over a sufficiently large propagation range.
+- Use at least four valid measurement points.
 
-## Model limitations
+## 2. Thin-lens transformation
 
-The calculations assume paraxial propagation, a thin ideal lens, and a constant M². Fit accuracy depends strongly on measurements spanning both sides of the waist and a sufficiently large propagation range.
+Use this tab to calculate how a Gaussian beam changes after passing through a thin lens.
+
+Enter:
+
+- Wavelength in nanometres
+- Input waist radius in millimetres
+- Beam-quality factor $M^2$
+- Distance from the input waist to the lens in millimetres
+- Lens focal length in millimetres
+
+The input waist is defined as position $z=0$, and the lens is located at $z=s$. The application calculates:
+
+- Input Rayleigh range
+- Distance from the lens to the new waist
+- Global position of the new waist
+- Output Rayleigh range
+- Output waist radius
+
+The plot compares the incident beam, transformed beam, and free-propagating beam without a lens.
+
+## 3. Scan lens position
+
+Use this tab to examine how the output beam changes as the lens moves.
+
+1. Enter the wavelength, input waist radius, $M^2$, and focal length.
+2. Enter the minimum and maximum lens positions.
+3. View the calculated curves for:
+   - Output-waist position
+   - Lens-to-waist separation
+   - Output-waist radius
+4. Use **Download scan data** to export all calculated scan points as a CSV file.
+
+## Model assumptions
+
+The calculations assume:
+
+- Paraxial Gaussian-beam propagation
+- A thin, ideal lens
+- A constant $M^2$
+- No aberrations, clipping, or astigmatism
+
+Check all units and sign conventions before using the results in an experiment.
