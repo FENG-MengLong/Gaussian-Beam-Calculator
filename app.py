@@ -22,6 +22,7 @@ plt.rcParams.update({
 
 NM_TO_M = 1e-9
 MM_TO_M = 1e-3
+LENGTH_TO_MM = {"µm": 1e-3, "mm": 1.0, "cm": 10.0, "m": 1e3}
 
 
 def gaussian_beam_radius(z, w0, z0, m2, wavelength_m):
@@ -113,7 +114,7 @@ with fit_tab:
         input_data = default_data
 
     with right:
-        edited = st.data_editor(input_data, num_rows="dynamic", use_container_width=True, key="fit_data")
+        edited = st.data_editor(input_data, num_rows="dynamic", width="stretch", key="fit_data")
 
     if st.button("Fit beam", type="primary"):
         try:
@@ -164,47 +165,112 @@ with fit_tab:
 
 with transform_tab:
     st.subheader("Transform a Gaussian beam through a thin lens")
-    c1, c2, c3, c4, c5 = st.columns(5)
+    unit_col, c1, c2, c3, c4, c5 = st.columns(6)
+    length_unit = unit_col.selectbox(
+        "Length unit",
+        list(LENGTH_TO_MM),
+        index=1,
+        key="lens_length_unit",
+        help="Applies to beam sizes, distances, focal length, results, and the plot. Wavelength remains in nm.",
+    )
+    length_to_mm = LENGTH_TO_MM[length_unit]
     wavelength_nm = c1.number_input("Wavelength [nm]", min_value=1.0, value=780.0, key="lens_lambda")
-    w0_mm = c2.number_input("Input waist radius [mm]", min_value=1e-6, value=0.5)
+    w0_input = c2.number_input(
+        f"Input waist radius [{length_unit}]",
+        min_value=1e-6 / length_to_mm,
+        value=0.5 / length_to_mm,
+        step=0.1 / length_to_mm,
+    )
     m2_lens = c3.number_input("M²", min_value=1.0, value=1.0, step=0.1)
-    s_mm = c4.number_input("Waist → lens distance [mm]", value=150.0)
-    f_mm = c5.number_input("Focal length [mm]", value=100.0)
+    s_input = c4.number_input(
+        f"Waist → lens distance [{length_unit}]",
+        value=150.0 / length_to_mm,
+        step=1.0 / length_to_mm,
+    )
+    f_input = c5.number_input(
+        f"Focal length [{length_unit}]",
+        value=100.0 / length_to_mm,
+        step=1.0 / length_to_mm,
+    )
+
+    region_min_col, region_max_col = st.columns(2)
+    plot_min_input = region_min_col.number_input(
+        f"Plot region minimum [{length_unit}]",
+        value=-500.0 / length_to_mm,
+        step=10.0 / length_to_mm,
+        help="Absolute propagation position; the input waist is at z = 0.",
+    )
+    plot_max_input = region_max_col.number_input(
+        f"Plot region maximum [{length_unit}]",
+        value=650.0 / length_to_mm,
+        step=10.0 / length_to_mm,
+        help="Absolute propagation position; the lens is at z = s.",
+    )
+
+    w0_mm = w0_input * length_to_mm
+    s_mm = s_input * length_to_mm
+    f_mm = f_input * length_to_mm
+    plot_min_mm = plot_min_input * length_to_mm
+    plot_max_mm = plot_max_input * length_to_mm
 
     if abs(f_mm) < 1e-12:
         st.error("Focal length cannot be zero.")
+    elif plot_max_mm <= plot_min_mm:
+        st.error("Plot region maximum must exceed the minimum.")
     else:
         wavelength_mm = wavelength_nm * 1e-6
         z_r, s_prime, z_r_prime, w0_prime, waist_position = lens_transform(
             wavelength_mm, w0_mm, m2_lens, s_mm, f_mm
         )
         values = st.columns(5)
-        with values[0]: metric("Input Rayleigh range", z_r, "mm")
-        with values[1]: metric("Lens → new waist", s_prime, "mm")
-        with values[2]: metric("New waist position", waist_position, "mm")
-        with values[3]: metric("Output Rayleigh range", z_r_prime, "mm")
-        with values[4]: metric("Output waist radius", w0_prime, "mm")
+        with values[0]: metric("Input Rayleigh range", z_r / length_to_mm, length_unit)
+        with values[1]: metric("Lens → new waist", s_prime / length_to_mm, length_unit)
+        with values[2]: metric("New waist position", waist_position / length_to_mm, length_unit)
+        with values[3]: metric("Output Rayleigh range", z_r_prime / length_to_mm, length_unit)
+        with values[4]: metric("Output waist radius", w0_prime / length_to_mm, length_unit)
 
-        z_min = min(-0.5 * z_r, waist_position - 3 * z_r_prime)
-        z_max = max(s_mm + 0.5 * z_r, waist_position + 3 * z_r_prime)
-        before = np.linspace(z_min, s_mm, 700)
-        after = np.linspace(s_mm, z_max, 700)
-        w_before = w0_mm * np.sqrt(1 + (before / z_r) ** 2)
-        w_after = w0_prime * np.sqrt(1 + ((after - waist_position) / z_r_prime) ** 2)
-        w_free = w0_mm * np.sqrt(1 + (after / z_r) ** 2)
+        before_start = plot_min_mm
+        before_stop = min(s_mm, plot_max_mm)
+        after_start = max(s_mm, plot_min_mm)
+        after_stop = plot_max_mm
 
         fig, ax = plt.subplots(figsize=(4.6, 2.4))
-        for x, y, label, style, alpha in [
-            (before, w_before, "Incident beam", "-", 1),
-            (after, w_after, "After lens", "-", 1),
-            (after, w_free, "Without lens", "--", 0.5),
-        ]:
-            line, = ax.plot(x, y, style, alpha=alpha, label=label)
-            ax.plot(x, -y, style, alpha=alpha, color=line.get_color())
-        ax.axvline(s_mm, ls=":", color="black", label="Lens")
+        if before_stop > before_start:
+            before = np.linspace(before_start, before_stop, 700)
+            w_before = w0_mm * np.sqrt(1 + (before / z_r) ** 2)
+            x_before = before / length_to_mm
+            y_before = w_before / length_to_mm
+            line, = ax.plot(x_before, y_before, label="Incident beam")
+            ax.plot(x_before, -y_before, color=line.get_color())
+
+        if after_stop > after_start:
+            after = np.linspace(after_start, after_stop, 700)
+            w_after = w0_prime * np.sqrt(1 + ((after - waist_position) / z_r_prime) ** 2)
+            w_free = w0_mm * np.sqrt(1 + (after / z_r) ** 2)
+            x_after = after / length_to_mm
+            for y, label, style, alpha in [
+                (w_after / length_to_mm, "After lens", "-", 1),
+                (w_free / length_to_mm, "Without lens", "--", 0.5),
+            ]:
+                line, = ax.plot(x_after, y, style, alpha=alpha, label=label)
+                ax.plot(x_after, -y, style, alpha=alpha, color=line.get_color())
+
+        ax.axvline(s_mm / length_to_mm, ls=":", color="black", label="Lens")
         ax.axvline(0, ls=":", alpha=0.25)
-        ax.scatter([0, waist_position], [0, 0], s=12, linewidths=0.4, color="black", zorder=4)
-        ax.set(xlabel="Propagation position z [mm]", ylabel="Beam radius ±w(z) [mm]", title="Gaussian Beam Through a Thin Lens")
+        ax.scatter(
+            [0, waist_position / length_to_mm],
+            [0, 0],
+            s=12,
+            linewidths=0.4,
+            color="black",
+            zorder=4,
+        )
+        ax.set(
+            xlabel=f"Propagation position z [{length_unit}]",
+            ylabel=f"Beam radius ±w(z) [{length_unit}]",
+            title="Gaussian Beam Through a Thin Lens",
+            xlim=(plot_min_input, plot_max_input),
+        )
         ax.grid(alpha=0.3)
         ax.legend()
         st.pyplot(fig, width="content")
@@ -234,18 +300,15 @@ with scan_tab:
         fig, axes = plt.subplots(3, 1, figsize=(4.0, 3.4), sharex=True)
         axes[0].plot(positions, global_waists)
         axes[0].set_ylabel(r"$z_{\mathrm{waist}}$ [mm]")
-        axes[0].set_title("Transformation vs lens position", fontsize=7)
+        axes[0].set_title("Transformation vs lens position")
         axes[1].plot(positions, separations)
         axes[1].axhline(scan_f, ls="--", alpha=0.5, label="Focal length")
         axes[1].set_ylabel(r"$s'$ [mm]")
-        axes[1].legend(fontsize=5.5)
+        axes[1].legend()
         axes[2].plot(positions, output_w0)
         axes[2].set(ylabel=r"$w_0'$ [mm]", xlabel=r"Lens position $s$ [mm]")
         for axis in axes:
             axis.grid(alpha=0.3)
-            axis.tick_params(labelsize=5.5)
-            axis.xaxis.label.set_size(6)
-            axis.yaxis.label.set_size(6)
         fig.tight_layout(pad=0.6, h_pad=0.7)
         st.pyplot(fig, width="content")
 

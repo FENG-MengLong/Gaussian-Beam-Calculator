@@ -67,11 +67,13 @@ Use this tab to calculate how a Gaussian beam changes after passing through a th
 
 Enter:
 
+- A shared length unit for beam sizes, distances, results, and the plot
 - Wavelength in nanometres
-- Input waist radius in millimetres
+- Input waist radius in the selected length unit
 - Beam-quality factor $M^2$
-- Distance from the input waist to the lens in millimetres
-- Lens focal length in millimetres
+- Distance from the input waist to the lens in the selected length unit
+- Lens focal length in the selected length unit
+- Minimum and maximum propagation positions for the plot region
 
 The input waist is defined as position $z=0$, and the lens is located at $z=s$. The application calculates:
 
@@ -81,7 +83,7 @@ The input waist is defined as position $z=0$, and the lens is located at $z=s$. 
 - Output Rayleigh range
 - Output waist radius
 
-The plot compares the incident beam, transformed beam, and free-propagating beam without a lens.
+The plot compares the incident beam, transformed beam, and free-propagating beam without a lens. Its axes and reported length values use the selected length unit.
 
 ## 3. Scan lens position
 
