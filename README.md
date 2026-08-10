@@ -20,7 +20,7 @@ Open the URL displayed in the terminal, normally <http://localhost:8501>.
 
 > All beam sizes in this application are **1/e² intensity radii**, not diameters.
 
-Shared parameters flow forward through the tabs: tab 1 passes only the wavelength to tabs 2 and 3, while tab 2 passes wavelength, waist radius, $M^2$, and focal length to tab 3. Fitted results from tab 1 remain local to tab 1. Length values are converted automatically when the selected unit differs.
+Shared parameters and their selected units flow forward through the tabs: tab 1 passes only the wavelength in nanometres to tabs 2 and 3, while tab 2 passes wavelength, waist radius, $M^2$, focal length, and their units to tab 3. Fitted results from tab 1 remain local to tab 1.
 
 ## 1. Fit measured beam
 
@@ -69,13 +69,12 @@ Use this tab to calculate how a Gaussian beam changes after passing through a th
 
 Enter:
 
-- A shared length unit for beam sizes, distances, results, and the plot
-- Wavelength in nanometres
-- Input waist radius in the selected length unit
+- Wavelength and its unit
+- Input waist radius and its unit
 - Beam-quality factor $M^2$
-- Distance from the input waist to the lens in the selected length unit
-- Lens focal length in the selected length unit
-- Minimum and maximum propagation positions for the plot region
+- Distance from the input waist to the lens and its unit
+- Lens focal length and its unit
+- Minimum and maximum propagation positions, each with its own unit
 
 The input waist is defined as position $z=0$, and the lens is located at $z=s$. The application calculates:
 
@@ -85,14 +84,14 @@ The input waist is defined as position $z=0$, and the lens is located at $z=s$. 
 - Output Rayleigh range
 - Output waist radius
 
-The plot compares the incident beam, transformed beam, and free-propagating beam without a lens. Its axes and reported length values use the selected length unit.
+The plot compares the incident beam, transformed beam, and free-propagating beam without a lens. Calculated length results and plot axes are displayed in millimetres.
 
 ## 3. Scan lens position
 
 Use this tab to examine how the output beam changes as the lens moves.
 
-1. Enter the wavelength, input waist radius, $M^2$, and focal length.
-2. Enter the minimum and maximum lens positions.
+1. Enter the wavelength, input waist radius, $M^2$, and focal length, selecting an independent unit for each length.
+2. Enter the minimum and maximum lens positions, each with its own unit.
 3. View the calculated curves for:
    - Output-waist position
    - Lens-to-waist separation
