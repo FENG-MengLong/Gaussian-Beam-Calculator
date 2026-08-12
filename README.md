@@ -1,6 +1,6 @@
 # Gaussian Beam Calculator
 
-A Streamlit application for fitting Gaussian-beam measurements and calculating beam propagation through a thin lens.
+A Streamlit application for fitting Gaussian-beam measurements and calculating beam propagation through as many as four thin lenses.
 
 ## Start the application
 
@@ -20,7 +20,7 @@ Open the URL displayed in the terminal, normally <http://localhost:8501>.
 
 > All beam sizes in this application are **1/e² intensity radii**, not diameters.
 
-Shared parameters and their selected units flow forward through the tabs: tab 1 passes only the wavelength in nanometres to tabs 2 and 3, while tab 2 passes wavelength, waist radius, $M^2$, focal length, and their units to tab 3. Fitted results from tab 1 remain local to tab 1.
+Shared parameters and their selected units flow forward through the tabs: tab 1 passes only the wavelength in nanometres to tabs 2 and 3, while tab 2 passes wavelength, waist radius, and $M^2$ to tab 3. Fitted results from tab 1 remain local to tab 1.
 
 ## 1. Fit measured beam
 
@@ -63,47 +63,49 @@ For a reliable fit:
 - Measure over a sufficiently large propagation range.
 - Use at least four valid measurement points.
 
-## 2. Thin-lens transformation
+## 2. Multi-lens transformation
 
-Use this tab to calculate how a Gaussian beam changes after passing through a thin lens.
+Use this tab to calculate how a Gaussian beam changes after passing through one to four thin lenses in sequence.
 
 Enter:
 
 - Wavelength and its unit
 - Input waist radius and its unit
 - Beam-quality factor $M^2$
-- Distance from the input waist to the lens and its unit
-- Lens focal length and its unit
+- Number of lenses (up to four)
+- Absolute position and focal length for each lens, with independent units
 - Minimum and maximum propagation positions, each with its own unit
 
-The input waist is defined as position $z=0$, and the lens is located at $z=s$. The application calculates:
+The input waist is defined as position $z=0$. Lens positions must increase in the beam-propagation direction. The application calculates the output after every lens and summarizes the final beam with:
 
 - Input Rayleigh range
-- Distance from the lens to the new waist
-- Global position of the new waist
-- Output Rayleigh range
-- Output waist radius
+- Distance from the final lens to the final waist
+- Global position of the final waist
+- Final Rayleigh range
+- Final waist radius
 
-The plot compares the incident beam, transformed beam, and free-propagating beam without a lens. Calculated length results and plot axes are displayed in millimetres.
+The plot shows the incident beam and each sequentially transformed segment. A table beside the plot lists sampled final-beam radii against position measured from the last lens. Beneath the table, enter any non-negative relative position to calculate its exact beam radius. Calculated length results and plot axes are displayed in millimetres.
 
-## 3. Scan lens position
+## 3. Single lens scan
 
-Use this tab to examine how the output beam changes as the lens moves.
+Use this tab to find a positive thin lens that focuses the incident beam at a known target plane.
 
-1. Enter the wavelength, input waist radius, $M^2$, and focal length, selecting an independent unit for each length.
-2. Enter the minimum and maximum lens positions, each with its own unit.
-3. View the calculated curves for:
-   - Output-waist position
-   - Lens-to-waist separation
-   - Output-waist radius
-4. Use **Download scan data** to export all calculated scan points as a CSV file.
+1. Enter the wavelength, input waist radius, $M^2$, and target position measured from the incident waist at $z=0$.
+2. Enter the lens-position scan range. The entire range must be between the incident waist and target plane.
+3. Enter the positive focal-length scan range.
+4. Read the 2D map: its color gives the beam radius at the target for every lens-position and focal-length pair. A logarithmic or linear color scale can be selected.
+5. Use the overlaid contours to assess the target plane relative to the transformed waist:
+   - White: $|z_{target}-z_{waist}|=z_R'/2$
+   - Orange: $|z_{target}-z_{waist}|=z_R'$
+6. Select a fixed lens position or focal length to draw the corresponding vertical or horizontal slice on the map. The compact slice plot shows the target beam radius along the other scan axis and marks its minimum.
+7. Use **Download scan data** to export the map values and transformed-beam parameters as a CSV file.
 
 ## Model assumptions
 
 The calculations assume:
 
 - Paraxial Gaussian-beam propagation
-- A thin, ideal lens
+- Thin, ideal lenses
 - A constant $M^2$
 - No aberrations, clipping, or astigmatism
 
